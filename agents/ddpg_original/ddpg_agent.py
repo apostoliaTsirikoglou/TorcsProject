@@ -26,6 +26,7 @@ class Agent(AbstractAgent):
     REPLAY_START_SIZE = 100
     BATCH_SIZE = 32 # size of minibatches to train with
     GAMMA = 0.99    # γ discount factor for discounted future reward!
+    SAFETY_GAMMA = 0.9
 
     actor_network = None
     critic_network = None
@@ -33,9 +34,10 @@ class Agent(AbstractAgent):
     OU = None
 
     #Construct ddpg agent
-    def __init__(self,env_name, state_dim, action_dim):
+    def __init__(self,env_name, state_dim, action_dim, safety_critic=False):
         self.state_dim = state_dim  # dimention of states e.g vision size and other sensors!
         self.action_dim = action_dim  # dimention of action e.g 3 for steering, throttle, and break
+        self.safety_critic = safety_critic # false = normal ddpg, true = safety critic test!
 
         self.env_name = env_name
 
@@ -46,6 +48,8 @@ class Agent(AbstractAgent):
         ### Randomly initialize critic network and actor with weights θQ and θμ
         self.actor_network = Actor(self.sess, self.state_dim, self.action_dim)
         self.critic_network = Critic(self.sess, self.state_dim, self.action_dim)
+        if(self.safety_critic):
+            self.safety_critic_network = Critic(self.sess, self.state_dim, self.action_dim)
 
         ### Initialize replay buffer R
         self.replay_buffer = ReplayBuffer(self.REPLAY_BUFFER_SIZE)
@@ -71,9 +75,9 @@ class Agent(AbstractAgent):
         if(is_training):
             # OU function(self, x, mu, theta, sigma)
             noise_t = np.zeros(self.action_dim)
-            noise_t[0] = epsilon * self.OU.function(action[0], 0.0, 0.60, 0.80)
-            noise_t[1] = epsilon * self.OU.function(action[1], 0.5, 1.00, 0.10)
-            noise_t[2] = epsilon * self.OU.function(action[2], -0.1, 1.00, 0.05)
+            noise_t[0] = epsilon * self.OU.function(action[0], 0.0, 0.60, 0.80) # steer
+            noise_t[1] = epsilon * self.OU.function(action[1], 0.5, 1.00, 0.10) # throttle
+            noise_t[2] = epsilon * self.OU.function(action[2], -0.1, 1.00, 0.05) # brake
             action = action + noise_t
 
 
@@ -91,24 +95,31 @@ class Agent(AbstractAgent):
         minibatch = self.replay_buffer.getBatch(self.BATCH_SIZE)
         state_batch = np.asarray([data[0] for data in minibatch])
         action_batch = np.asarray([data[1] for data in minibatch])
+
+        #TODO, depends on if reward will be touple or two columns!
+        # reward is triple [reward, progress, penalty]
         reward_batch = np.asarray([data[2] for data in minibatch])
+        #print("reward_batch.shape = " + str(reward_batch.shape))
+        
         next_state_batch = np.asarray([data[3] for data in minibatch])
         done_batch = np.asarray([data[4] for data in minibatch])
 
         # for action_dim = 1
         action_batch = np.resize(action_batch, [self.BATCH_SIZE, self.action_dim])
 
+        #TODO this is just temporarily addapted to work with penalty, but not implemented!!
         # Calculate y_batch
-
-        next_action_batch = self.actor_network.target_actions(next_state_batch)
-        q_value_batch = self.critic_network.target_q(next_state_batch, next_action_batch)
+        next_action_batch = self.actor_network.target_actions(next_state_batch) # next_action = μ'(st+1 | θ'μ')
+        q_value_batch = self.critic_network.target_q(next_state_batch, next_action_batch) # Q_values = Q'(Si+1, next_action | θ'Q)
         y_batch = []
         for i in range(len(minibatch)):
             if done_batch[i]:
-                y_batch.append(reward_batch[i])
+                y_batch.append(reward_batch[i,1])
             else:
-                y_batch.append(reward_batch[i] + self.GAMMA * q_value_batch[i])
+                y_batch.append(reward_batch[i,1] + self.GAMMA * q_value_batch[i])
         y_batch = np.resize(y_batch, [self.BATCH_SIZE, 1])
+
+
         # Update critic by minimizing the loss L
         self.critic_network.train(y_batch, state_batch, action_batch)
 

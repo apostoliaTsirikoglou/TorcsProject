@@ -49,6 +49,8 @@ class agent_runner(object):
     throttle = True
     gear_change = False #False = drive only on first gear, limited to 80 km/h
 
+    safety_critic = False # false = normal ddpg, True = double critic
+
 
 
     # 1. original sensors!!!
@@ -94,7 +96,7 @@ class agent_runner(object):
         print("1. Env is created! with: vision="+str(self.vision) + ", throttle=" + str(self.throttle) +", gear_change=" + str(self.gear_change))
 
         # Create agent
-        self.agent = Agent(env_name="TORCS", state_dim=self.state_dim, action_dim=self.action_dim)
+        self.agent = Agent(env_name="TORCS", state_dim=self.state_dim, action_dim=self.action_dim, safety_critic=self.safety_critic)
         print("2. Agent is created! with state_dim=" + str(self.state_dim) + ", action_dim=" + str(self.action_dim))
 
         # create a settings file ( only for saving setting, not for applying settings!!!!
@@ -156,16 +158,17 @@ class agent_runner(object):
                 s_t1 = self.create_state(ob) # next state, after action a_t
 
                 # Cheking for nan rewards
-                if (math.isnan(r_t)):
-                    r_t = 0.0
-                    print('NAN reward <===========================================================================')
+                #TODO, this doesnt work with new Reward
+                #if (math.isnan(r_t)):
+                #    r_t = 0.0
+                #    print('NAN reward <===========================================================================')
 
 
                 ### Store transition (st,at,rt,st+1) in ReplayBuffer
                 self.agent.replay_buffer.add(s_t, a_t, r_t, s_t1, done)
 
 
-                total_reward += r_t
+                total_reward += r_t[1]
                 s_t = s_t1
 
                 ### training (includes 5 steps from ddpg algo):
@@ -175,8 +178,8 @@ class agent_runner(object):
                 # print info:
                 if ((step % 20) == 0):
                     print("Ep:" + str(episode) + " step:" + str(step) + "(" + str(self.total_steps) + ")"
-                          + ", a_t=[s={: .2f}, t={: f}, b={: f}]".format(a_t[0], a_t[1], a_t[2])
-                          + ", r_t={: f}".format(r_t)
+                          + ", a_t=[s={: .2f}, t={: .2f}, b={: .2f}]".format(a_t[0], a_t[1], a_t[2])
+                          + ", r_t=[r={: .2f}, prog={: .2f}, pen={: .2f}]".format(r_t[0], r_t[1], r_t[2])
                           + ", Reward= {: .2f} / {: .2f}".format(total_reward, self.best_training_reward)
                           + ", epsilon= {: .3f}".format(self.epsilon)
                           + ", speed= {: .2f}".format(ob['speedX'] * 300)
@@ -223,6 +226,7 @@ class agent_runner(object):
                          "vision = " + str(self.vision) + "\n",
                          "throttle = " + str(self.throttle) + "\n",
                          "gear_change = " + str(self.gear_change) + "\n",
+                         "safety_critic = " + str(self.safety_critic) + "\n",
                          "state_dim = " + str(self.state_dim) + "\n",
                          "action_dim = " + str(self.action_dim)]
         for line in settings_text:
