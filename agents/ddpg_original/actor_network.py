@@ -5,6 +5,7 @@ import math
 # Hyper Parameters
 LAYER1_SIZE = 300
 LAYER2_SIZE = 400
+LAYER3_SIZE = 400
 LEARNING_RATE = 1e-4
 TAU = 0.001
 BATCH_SIZE = 32
@@ -46,35 +47,41 @@ class Actor:
     def create_network(self, state_dim, action_dim):
         layer1_size = LAYER1_SIZE
         layer2_size = LAYER2_SIZE
+        layer3_size = LAYER3_SIZE
 
         state_input = tf.placeholder("float", [None, state_dim])
 
         W1 = self.variable([state_dim, layer1_size], state_dim)
         b1 = self.variable([layer1_size], state_dim)
+
         W2 = self.variable([layer1_size, layer2_size], layer1_size)
         b2 = self.variable([layer2_size], layer1_size)
-        # W3 = tf.Variable(tf.random_uniform([layer2_size,action_dim],-3e-3,3e-3))
-        # b3 = tf.Variable(tf.random_uniform([action_dim],-3e-3,3e-3))
 
-        W_steer = tf.Variable(tf.random_uniform([layer2_size, 1], -1e-4, 1e-4))
+        # W3 = tf.Variable(tf.random_uniform([layer2_size,action_dim],-3e-3,3e-3))
+        W3 = self.variable([layer2_size, layer3_size], layer2_size)
+        # b3 = tf.Variable(tf.random_uniform([action_dim],-3e-3,3e-3))
+        b3 = self.variable([layer3_size], layer2_size)
+
+        W_steer = tf.Variable(tf.random_uniform([layer3_size, 1], -1e-4, 1e-4))
         b_steer = tf.Variable(tf.random_uniform([1], -1e-4, 1e-4))
 
-        W_accel = tf.Variable(tf.random_uniform([layer2_size, 1], -1e-4, 1e-4))
+        W_accel = tf.Variable(tf.random_uniform([layer3_size, 1], -1e-4, 1e-4))
         b_accel = tf.Variable(tf.random_uniform([1], -1e-4, 1e-4))
 
-        W_brake = tf.Variable(tf.random_uniform([layer2_size, 1], -1e-4, 1e-4))
+        W_brake = tf.Variable(tf.random_uniform([layer3_size, 1], -1e-4, 1e-4))
         b_brake = tf.Variable(tf.random_uniform([1], -1e-4, 1e-4))
 
         layer1 = tf.nn.relu(tf.matmul(state_input, W1) + b1)
         layer2 = tf.nn.relu(tf.matmul(layer1, W2) + b2)
+        layer3 = tf.nn.relu(tf.matmul(layer2, W3) + b3)
 
-        steer = tf.tanh(tf.matmul(layer2, W_steer) + b_steer)
-        accel = tf.sigmoid(tf.matmul(layer2, W_accel) + b_accel)
-        brake = tf.sigmoid(tf.matmul(layer2, W_brake) + b_brake)
+        steer = tf.tanh(tf.matmul(layer3, W_steer) + b_steer)
+        accel = tf.sigmoid(tf.matmul(layer3, W_accel) + b_accel)
+        brake = tf.sigmoid(tf.matmul(layer3, W_brake) + b_brake)
 
         action_output = tf.concat([steer, accel, brake], 1)
 
-        return state_input, action_output, [W1, b1, W2, b2, W_steer, b_steer, W_accel, b_accel, W_brake, b_brake]
+        return state_input, action_output, [W1, b1, W2, b2, W3, b3, W_steer, b_steer, W_accel, b_accel, W_brake, b_brake]
 
     def create_target_network(self, state_dim, action_dim, net):
         state_input = tf.placeholder("float", [None, state_dim])
@@ -84,10 +91,11 @@ class Actor:
 
         layer1 = tf.nn.relu(tf.matmul(state_input, target_net[0]) + target_net[1])
         layer2 = tf.nn.relu(tf.matmul(layer1, target_net[2]) + target_net[3])
+        layer3 = tf.nn.relu(tf.matmul(layer2, target_net[4]) + target_net[5])
 
-        steer = tf.tanh(tf.matmul(layer2, target_net[4]) + target_net[5])
-        accel = tf.sigmoid(tf.matmul(layer2, target_net[6]) + target_net[7])
-        brake = tf.sigmoid(tf.matmul(layer2, target_net[8]) + target_net[9])
+        steer = tf.tanh(tf.matmul(layer3, target_net[6]) + target_net[7])
+        accel = tf.sigmoid(tf.matmul(layer3, target_net[8]) + target_net[9])
+        brake = tf.sigmoid(tf.matmul(layer3, target_net[10]) + target_net[11])
 
         action_output = tf.concat([steer, accel, brake], 1)
         return state_input, action_output, target_update, target_net
