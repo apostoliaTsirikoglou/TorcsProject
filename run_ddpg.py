@@ -122,6 +122,7 @@ class agent_runner(object):
             print(" starting episode: " + str(episode) +"/"+ str(self.episode_count))
             done = self.done
             total_reward = 0.
+            total_reward_old = 0.
 
             # train_indicator is equal to is_training but set to false when testing every 20th episode!
             #train_indicator = (self.is_training and not((episode > 10) and (episode % 20 == 0)))
@@ -168,7 +169,8 @@ class agent_runner(object):
                 self.agent.replay_buffer.add(s_t, a_t, r_t, s_t1, done)
 
 
-                total_reward += r_t[1]
+                total_reward += r_t[0]
+                total_reward_old += r_t[3]
                 s_t = s_t1
 
                 ### training (includes 5 steps from ddpg algo):
@@ -179,8 +181,8 @@ class agent_runner(object):
                 if ((step % 20) == 0):
                     print("Ep:" + str(episode) + " step:" + str(step) + "(" + str(self.total_steps) + ")"
                           + ", a_t=[s={: .2f}, t={: .2f}, b={: .2f}]".format(a_t[0], a_t[1], a_t[2])
-                          + ", r_t=[r={: .2f}, prog={: .2f}, pen={: .2f}]".format(r_t[0], r_t[1], r_t[2])
-                          + ", Reward= {: .2f} / {: .2f}".format(total_reward, self.best_training_reward)
+                          + ", r_t=[r={: .2f}, prog={: .2f}, pen={: .2f}, r_old={: .2f}]".format(r_t[0], r_t[1], r_t[2], r_t[3])
+                          + ", Reward= {: .2f}/ {: .2f} / {: .2f}".format(total_reward, total_reward_old, self.best_training_reward)
                           + ", epsilon= {: .3f}".format(self.epsilon)
                           + ", speed= {: .2f}".format(ob['speedX'] * 300)
                           + ", gear={: .0f}".format(ob['gear'])
