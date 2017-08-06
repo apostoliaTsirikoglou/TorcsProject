@@ -33,6 +33,7 @@ class agent_runner(object):
     EXPLORE = 400000.0
 
     log_size = 100 # number of episodes per log
+    log_freq = 1
     log_in_file = True
 
     # initial values
@@ -179,7 +180,7 @@ class agent_runner(object):
                     self.agent.train()
 
                 # print info:
-                if ((step % 20) == 0):
+                if ((step % self.log_freq) == 0):
                     print("Ep:" + str(episode) + " step:" + str(step) + "(" + str(self.total_steps) + ")"
                           + ", a_t=[s={: .2f}, t={: .2f}, b={: .2f}]".format(a_t[0], a_t[1], a_t[2])
                           + ", r_t=[r={: .2f}, prog={: .2f}, pen={: .2f}, r_old={: .2f}]".format(r_t[0], r_t[1], r_t[2], r_t[3])
