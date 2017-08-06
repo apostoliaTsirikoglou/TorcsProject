@@ -51,6 +51,8 @@ class agent_runner(object):
 
     safety_critic = False # false = normal ddpg, True = double critic
 
+    reward_shift = random.random()
+
 
 
     # 1. original sensors!!!
@@ -60,7 +62,7 @@ class agent_runner(object):
     #state_dim = 89
 
     # 3. combo! for driving without vision, but close to realistic!
-    state_dim = 90
+    #state_dim = 90
 
     # 4. combo! same as 3 but without focus sensor!!!
     state_dim = 85
@@ -77,7 +79,6 @@ class agent_runner(object):
 
 
     def __init__(self):
-
         # create a folder in runs for saving info about the run, result, and trained nets!!
         self.start_time = datetime.datetime.now()
         self.folder_name = "runs/" + self.start_time.strftime("%Y-%m-%d %H:%M:%S - " + Agent.get_name())
@@ -92,7 +93,7 @@ class agent_runner(object):
             sys.stdout = self.log
 
         # Generate a Torcs environment
-        self.env = TorcsEnv(vision=self.vision, throttle=self.throttle, gear_change=self.gear_change)
+        self.env = TorcsEnv(vision=self.vision, throttle=self.throttle, gear_change=self.gear_change, reward_shift=self.reward_shift)
         print("1. Env is created! with: vision="+str(self.vision) + ", throttle=" + str(self.throttle) +", gear_change=" + str(self.gear_change))
 
         # Create agent
@@ -230,6 +231,7 @@ class agent_runner(object):
                          "throttle = " + str(self.throttle) + "\n",
                          "gear_change = " + str(self.gear_change) + "\n",
                          "safety_critic = " + str(self.safety_critic) + "\n",
+                         "reward_shift = " + str(self.reward_shift) + "\n",
                          "state_dim = " + str(self.state_dim) + "\n",
                          "action_dim = " + str(self.action_dim)]
         for line in settings_text:
@@ -279,7 +281,7 @@ class agent_runner(object):
         #s_t = np.hstack((ob['focus'], ob['opponents'], ob['track'], ob['speedX'], ob['speedY'], ob['speedZ'], ob['wheelSpinVel'], ob['rpm'], ob['gear']/6))
 
         # 3. combo! for driving without vision, but close to realistic!
-        s_t = np.hstack((ob['angle'],ob['track'], ob['trackPos'], ob['focus'], ob['opponents'], ob['track'], ob['speedX'], ob['speedY'], ob['speedZ'], ob['wheelSpinVel'], ob['rpm'], ob['gear']/6))
+        #s_t = np.hstack((ob['angle'],ob['track'], ob['trackPos'], ob['focus'], ob['opponents'], ob['track'], ob['speedX'], ob['speedY'], ob['speedZ'], ob['wheelSpinVel'], ob['rpm'], ob['gear']/6))
 
 
         # 4. combo! for driving without vision, but close to realistic, removed focus as that sensor is not reliable!!!
@@ -311,5 +313,6 @@ class agent_runner(object):
 if __name__ == "__main__":
     runner = agent_runner()
     runner.run_ddpg()
+
 
 
