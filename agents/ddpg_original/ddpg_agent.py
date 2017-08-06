@@ -43,13 +43,17 @@ class Agent(AbstractAgent):
 
         # Ensure action bound is symmetric
         self.time_step = 0
-        self.sess = tf.InteractiveSession(config=tf.ConfigProto(log_device_placement=True))
+        self.sess = tf.InteractiveSession(config=tf.ConfigProto(log_device_placement=False))
 
         ### Randomly initialize critic network and actor with weights θQ and θμ
         self.actor_network = Actor(self.sess, self.state_dim, self.action_dim)
         self.critic_network = Critic(self.sess, self.state_dim, self.action_dim)
         if(self.safety_critic):
             self.safety_critic_network = Critic(self.sess, self.state_dim, self.action_dim)
+
+        self.sess.run(tf.global_variables_initializer())
+        self.actor_network.update_target()
+        self.critic_network.update_target()
 
         ### Initialize replay buffer R
         self.replay_buffer = ReplayBuffer(self.REPLAY_BUFFER_SIZE)
