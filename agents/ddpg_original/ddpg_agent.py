@@ -118,9 +118,9 @@ class Agent(AbstractAgent):
         y_batch = []
         for i in range(len(minibatch)):
             if done_batch[i]:
-                y_batch.append(reward_batch[i,1])
+                y_batch.append(reward_batch[i,0])
             else:
-                y_batch.append(reward_batch[i,1] + self.GAMMA * q_value_batch[i])
+                y_batch.append(reward_batch[i,0] + self.GAMMA * q_value_batch[i])
         y_batch = np.resize(y_batch, [self.BATCH_SIZE, 1])
 
 
